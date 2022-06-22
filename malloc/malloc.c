@@ -32,23 +32,21 @@ typedef struct my_metadata_t
 {
   size_t size;
   struct my_metadata_t *next;
+  struct my_metadata_t *prev;
 } my_metadata_t;
 
 typedef struct my_heap_t
 {
   // free_bins[i] contains the list of free spaces whose size <= (1 << (i + MIN_BIN_SCALE))
   my_metadata_t *free_bins[MAX_BIN_SCALE - MIN_BIN_SCALE + 1];
-  my_metadata_t dummy;
+  my_metadata_t dummy[MAX_BIN_SCALE - MIN_BIN_SCALE + 1];
 } my_heap_t;
 
 //
 // Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
 my_heap_t my_heap;
-
-//
-// Helper functions (feel free to add/remove/edit!)
-//
+// // Helper functions (feel free to add/remove/edit!) //
 
 int find_bin_idx(size_t size)
 {
@@ -66,21 +64,33 @@ void my_add_to_free_list(my_metadata_t *metadata)
 {
   assert(!metadata->next);
   int bin_idx = find_bin_idx(metadata->size);
+  fprintf(stderr, "%zu\n", metadata->size);
   metadata->next = my_heap.free_bins[bin_idx];
+  (metadata->next)->prev = metadata;
+  metadata->prev = NULL;
   my_heap.free_bins[bin_idx] = metadata;
 }
 
-void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev, int idx)
+void my_remove_from_free_list(my_metadata_t *metadata, int idx)
 {
-  if (prev)
+  if (metadata->prev)
   {
-    prev->next = metadata->next;
+    (metadata->prev)->next = metadata->next;
+    if (metadata->next)
+    {
+      (metadata->next)->prev = metadata->prev;
+    }
   }
   else
   {
     my_heap.free_bins[idx] = metadata->next;
+    if (metadata->next)
+    {
+      (metadata->next)->prev = NULL;
+    }
   }
   metadata->next = NULL;
+  metadata->prev = NULL;
 }
 
 //
@@ -92,10 +102,11 @@ void my_initialize()
 {
   for (int i = 0; i < MAX_BIN_SCALE - MIN_BIN_SCALE; i++)
   {
-    my_heap.free_bins[i] = &my_heap.dummy;
+    my_heap.free_bins[i] = &my_heap.dummy[i];
+    my_heap.dummy[i].size = 0;
+    my_heap.dummy[i].next = NULL;
+    my_heap.dummy[i].prev = NULL;
   }
-  my_heap.dummy.size = 0;
-  my_heap.dummy.next = NULL;
 }
 
 // my_malloc() is called every time an object is allocated.
@@ -105,15 +116,13 @@ void my_initialize()
 void *my_malloc(size_t size)
 {
   int bin_idx = find_bin_idx(size);
-  my_metadata_t *metadata, *prev, *metadata_best, *prev_best;
+  my_metadata_t *metadata, *metadata_best;
   size_t size_best;
   int bin_idx_best = -1;
   for (int i = bin_idx; i <= MAX_BIN_SCALE - MIN_BIN_SCALE; i++)
   {
     metadata = my_heap.free_bins[i];
-    prev = NULL;
     metadata_best = metadata;
-    prev_best = prev;
     size_best = 0;
 
     while (metadata)
@@ -122,9 +131,7 @@ void *my_malloc(size_t size)
       {
         size_best = metadata->size;
         metadata_best = metadata;
-        prev_best = prev;
       }
-      prev = metadata;
       metadata = metadata->next;
     }
     if (size_best > 0)
@@ -150,6 +157,7 @@ void *my_malloc(size_t size)
     my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
     metadata->size = buffer_size - sizeof(my_metadata_t);
     metadata->next = NULL;
+    metadata->prev = NULL;
     // Add the memory region to the free list.
     my_add_to_free_list(metadata);
     // Now, try my_malloc() again. This should succeed.
@@ -165,7 +173,7 @@ void *my_malloc(size_t size)
   size_t remaining_size = metadata_best->size - size;
   metadata_best->size = size;
   // Remove the free slot from the free list.
-  my_remove_from_free_list(metadata_best, prev_best, bin_idx_best);
+  my_remove_from_free_list(metadata_best, bin_idx_best);
 
   if (remaining_size > sizeof(my_metadata_t))
   {
@@ -179,6 +187,7 @@ void *my_malloc(size_t size)
     my_metadata_t *new_metadata = (my_metadata_t *)((char *)ptr + size);
     new_metadata->size = remaining_size - sizeof(my_metadata_t);
     new_metadata->next = NULL;
+    new_metadata->prev = NULL;
     // Add the remaining free slot to the free list.
     my_add_to_free_list(new_metadata);
   }
