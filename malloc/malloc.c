@@ -38,7 +38,7 @@ typedef struct my_heap_t
 {
   // free_bins[i] contains the list of free spaces whose size <= (1 << (i + MIN_BIN_SCALE))
   my_metadata_t *free_bins[MAX_BIN_SCALE - MIN_BIN_SCALE + 1];
-  my_metadata_t dummy;
+  my_metadata_t dummy[MAX_BIN_SCALE - MIN_BIN_SCALE + 1];
 } my_heap_t;
 
 //
@@ -92,10 +92,10 @@ void my_initialize()
 {
   for (int i = 0; i < MAX_BIN_SCALE - MIN_BIN_SCALE; i++)
   {
-    my_heap.free_bins[i] = &my_heap.dummy;
+    my_heap.free_bins[i] = &my_heap.dummy[i];
+    my_heap.dummy[i].size = 0;
+    my_heap.dummy[i].next = NULL;
   }
-  my_heap.dummy.size = 0;
-  my_heap.dummy.next = NULL;
 }
 
 // my_malloc() is called every time an object is allocated.
