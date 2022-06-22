@@ -64,7 +64,6 @@ void my_add_to_free_list(my_metadata_t *metadata)
 {
   assert(!metadata->next);
   int bin_idx = find_bin_idx(metadata->size);
-  fprintf(stderr, "%zu\n", metadata->size);
   metadata->next = my_heap.free_bins[bin_idx];
   (metadata->next)->prev = metadata;
   metadata->prev = NULL;
@@ -100,7 +99,7 @@ void my_remove_from_free_list(my_metadata_t *metadata, int idx)
 // This is called at the beginning of each challenge.
 void my_initialize()
 {
-  for (int i = 0; i < MAX_BIN_SCALE - MIN_BIN_SCALE; i++)
+  for (int i = 0; i <= MAX_BIN_SCALE - MIN_BIN_SCALE; i++)
   {
     my_heap.free_bins[i] = &my_heap.dummy[i];
     my_heap.dummy[i].size = 0;
