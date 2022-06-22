@@ -32,6 +32,7 @@ typedef struct my_metadata_t
 {
   size_t size;
   struct my_metadata_t *next;
+  struct my_metadata_t *prev;
 } my_metadata_t;
 
 typedef struct my_heap_t
@@ -95,6 +96,7 @@ void my_initialize()
     my_heap.free_bins[i] = &my_heap.dummy[i];
     my_heap.dummy[i].size = 0;
     my_heap.dummy[i].next = NULL;
+    my_heap.dummy[i].prev = NULL;
   }
 }
 
